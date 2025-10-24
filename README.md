@@ -19,7 +19,7 @@ Add `oban_events` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:oban_events, "~> 0.1.0"},
+    {:oban_events, "~> 1.0"},
     {:oban, "~> 2.0"},
     {:postgrex, ">= 0.0.0"}  # Required by Oban
   ]
