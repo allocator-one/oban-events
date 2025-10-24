@@ -99,18 +99,11 @@ end
 
 ```mermaid
 flowchart TD
-    A[Business Logic<br/>MyApp.Accounts] -->|1. Events.emit :user_created, data| B[MyApp.Events.emit]
-    B -->|2. Look up handlers<br/>EmailHandler, AnalyticsHandler| C[Create Oban jobs<br/>one per handler]
-    C -->|3. Transaction commits<br/>Jobs persisted to database| D[Oban processes jobs<br/>asynchronously]
-    D -->|4. DispatchWorker<br/>calls each handler| E[EmailHandler]
-    D -->|4. DispatchWorker<br/>calls each handler| F[AnalyticsHandler]
-
-    style A fill:#e1f5ff
-    style B fill:#fff4e1
-    style C fill:#ffe1f5
-    style D fill:#e1ffe1
-    style E fill:#f0f0f0
-    style F fill:#f0f0f0
+    A[Business Logic] -->|1. emit event + data| B[Events.emit]
+    B -->|2. lookup handlers| C[Create Oban jobs]
+    C -->|3. transaction commits| D[Oban processes jobs]
+    D -->|4. dispatch| E[EmailHandler]
+    D -->|4. dispatch| F[AnalyticsHandler]
 ```
 
 ## Configuration Options
