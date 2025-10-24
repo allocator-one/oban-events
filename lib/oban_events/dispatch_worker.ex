@@ -9,7 +9,7 @@ defmodule ObanEvents.DispatchWorker do
   4. Calls the handler's `handle_event/2` callback
   5. Logs success/failure for observability
 
-  ## Job Arguments
+  ## Job arguments
 
   - `event`: String representation of the event name
   - `handler`: String representation of the handler module
@@ -21,7 +21,7 @@ defmodule ObanEvents.DispatchWorker do
 
   ## Configuration
 
-  Queue, max_attempts, and priority are configured per event bus module
+  Queue, max_attempts, and priority are configured per events module
   when using `ObanEvents`. Jobs are created with these settings via
   `new/2` options.
 

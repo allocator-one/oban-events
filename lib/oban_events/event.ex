@@ -14,7 +14,7 @@ defmodule ObanEvents.Event do
   - `:causation_id` - Optional. The event_id of the parent emit that caused this one.
   - `:correlation_id` - Optional. Groups related events from the same business operation.
 
-  ## Metadata Explained
+  ## Metadata explained
 
   ### event_id (Auto-generated per emit)
   Identifies the emit itself. All handlers processing this emit receive the same event_id.

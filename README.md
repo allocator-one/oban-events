@@ -4,12 +4,12 @@ A lightweight, persistent event handling library for Elixir applications built o
 
 ## Features
 
-- 🔒 **Persistent** - Events survive application restarts (stored in Oban's database)
-- 🔄 **Reliable** - Automatic retries on failure via Oban
-- ⚡ **Async** - Non-blocking execution of handlers
-- 🔗 **Transactional** - Works within database transactions for atomicity
-- 📊 **Observable** - Track event processing via Oban Web UI
-- ✅ **Type-safe** - Compile-time validation of events
+- 🔒 **Persistent** - Handler jobs survive application restarts
+- 🔄 **Retryable** - Automatic retries on failure via Oban
+- ⚡ **Async** - Non-blocking event emission
+- 🔗 **Transactional** - Job creation works within database transactions
+- 📊 **Observable** - Track processing via Oban Web UI
+- ✅ **Validated** - Events are validated at compile time
 - 🎯 **Decoupled** - Event emitters don't know about handlers
 
 ## Installation
@@ -104,7 +104,7 @@ defmodule MyApp.Accounts do
 end
 ```
 
-## How It Works
+## How it works
 
 ```mermaid
 flowchart TD
@@ -189,7 +189,7 @@ Events.emit(:invoice_generated, data, correlation_id: correlation_id)
 # In logs: filter by correlation_id to see all related events
 ```
 
-### When to Use What
+### When to use what
 
 | Metadata | Always Auto-Generated | User Can Override | Primary Use Case |
 |----------|----------------------|-------------------|------------------|
@@ -199,9 +199,9 @@ Events.emit(:invoice_generated, data, correlation_id: correlation_id)
 | `causation_id` | No | Yes (optional) | Build event chains |
 | `correlation_id` | No | Yes (optional) | Group business operations |
 
-## Configuration Options
+## Configuration options
 
-### Global Configuration
+### Global configuration
 
 Configure the Oban instance and default job options:
 
@@ -226,7 +226,7 @@ end
 - `priority`: `2` (0-3, lower is higher priority)
 - `tags`: `[]`
 
-### Per-Handler Configuration
+### Per-handler configuration
 
 Override global options for specific handlers using tuple syntax:
 
@@ -257,7 +257,7 @@ Conditional execution (`:if` key):
 - Function: `fn event -> boolean() end` - receives full Event struct
 - MFA tuple: `{Module, :function, [args]}` - event is appended as last argument
 
-### Conditional Handlers
+### Conditional handlers
 
 Use the `:if` option to conditionally schedule handlers based on runtime conditions:
 
@@ -343,7 +343,7 @@ MyApp.Events.registered?(:user_created)
 # => true
 ```
 
-## Handler Implementation
+## Handler implementation
 
 Handlers must implement the `handle_event/2` callback:
 
@@ -367,7 +367,7 @@ defmodule MyApp.AnalyticsHandler do
 end
 ```
 
-### Return Values
+### Return values
 
 Handlers should return:
 
@@ -377,7 +377,7 @@ Handlers should return:
 
 Handlers may also raise exceptions, which will trigger Oban's retry mechanism.
 
-## Best Practices
+## Best practices
 
 ### 1. Always Use Transactions
 
@@ -540,15 +540,17 @@ def handle_event(:send_notification, %Event{data: data}) do
 end
 ```
 
-## Handler Management
+## Handler management
 
-### Renaming Handler Modules
+### Renaming or removing handler modules
 
-Handler module names are serialized to the database as fully-qualified Elixir module atoms (e.g., `"Elixir.MyApp.EmailHandler"`). When you rename a handler module, existing queued jobs will still reference the old module name and will fail when Oban tries to execute them.
+Handler module names are serialized to the database as fully-qualified Elixir module atoms (e.g., `"Elixir.MyApp.EmailHandler"`). When you rename or remove a handler module, existing queued jobs will still reference the old module name and will fail when Oban tries to execute them.
 
-**Safe Renaming Strategy:**
+**Safe migration strategy:**
 
-Use a module alias to maintain backward compatibility:
+Use a module alias/stub to maintain backward compatibility during the transition:
+
+**Example 1: Renaming a handler**
 
 ```elixir
 # After renaming MyApp.EmailHandler to MyApp.Notifications.EmailHandler
@@ -570,7 +572,7 @@ defmodule MyApp.EmailHandler do
   defdelegate handle_event(event, event_struct), to: MyApp.Notifications.EmailHandler
 end
 
-# 3. Update your event registry to use the new name
+# 3. Update your @events to use the new name
 defmodule MyApp.Events do
   use ObanEvents
 
@@ -582,19 +584,48 @@ defmodule MyApp.Events do
 end
 ```
 
-**How This Works:**
+**Example 2: Removing a handler**
 
-1. **Existing queued jobs** call `MyApp.EmailHandler.handle_event/2`, which delegates to the new module
-2. **New jobs** are created with `MyApp.Notifications.EmailHandler`
-3. **Zero downtime** - both old and new jobs work correctly
+```elixir
+# Removing MyApp.OldFeatureHandler
+
+# 1. Remove from @events (new jobs won't be created)
+defmodule MyApp.Events do
+  use ObanEvents
+
+  @events %{
+    user_created: [
+      # MyApp.OldFeatureHandler removed
+      MyApp.EmailHandler
+    ]
+  }
+end
+
+# 2. Keep a stub module to handle old queued jobs gracefully
+defmodule MyApp.OldFeatureHandler do
+  use ObanEvents.Handler
+
+  @impl true
+  def handle_event(_event, _event_struct) do
+    # Either process gracefully or just return :ok to discard
+    :ok
+  end
+end
+```
+
+**How this works:**
+
+1. **Existing queued jobs** continue to work (either delegated or gracefully handled)
+2. **New jobs** use the updated handler list
+3. **Zero downtime** - no jobs fail during the transition
 
 **Cleanup:**
 
-After all old jobs have processed (check Oban Web UI), you can safely remove the alias module. This typically takes as long as your retry window (default: a few hours with exponential backoff).
+After all old jobs have processed (check Oban Web UI), you can safely remove the alias/stub module. This typically takes as long as your retry window (default: a few hours with exponential backoff).
 
 ## Testing
 
-### Testing Event Emission
+### Testing event emission
 
 ```elixir
 use Oban.Testing, repo: MyApp.Repo
@@ -613,7 +644,7 @@ test "emits user_created event" do
 end
 ```
 
-### Testing Handlers
+### Testing handlers
 
 Use `ObanEvents.Testing` to easily create Event structs for testing:
 
@@ -641,7 +672,7 @@ defmodule MyApp.EmailHandlerTest do
 end
 ```
 
-### Testing with Oban Inline Mode
+### Testing with Oban inline mode
 
 For integration tests, configure Oban to execute jobs inline:
 
@@ -691,7 +722,7 @@ ObanEvents logs all event processing:
 
 ## Troubleshooting
 
-### Events Not Processing
+### Events not processing
 
 **Check Oban queue configuration:**
 
@@ -713,7 +744,7 @@ ORDER BY inserted_at DESC
 LIMIT 10;
 ```
 
-### Events Not Emitted
+### Events not emitted
 
 **Verify event is registered:**
 
@@ -739,7 +770,7 @@ Repo.transact(fn ->
 end)
 ```
 
-### Handler Failures
+### Handler failures
 
 **View errors in Oban Web UI** at `/dev/oban`
 

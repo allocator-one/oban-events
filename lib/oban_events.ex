@@ -1,8 +1,8 @@
 defmodule ObanEvents do
   @moduledoc """
-  Event bus with persistent, transactional async handlers via Oban.
+  Event handling with persistent, transactional async handlers via Oban.
 
-  This module provides a complete event bus system that combines event registration,
+  This module provides a complete event handling system that combines event registration,
   handler management, and async job dispatching in a single interface.
 
   ## Features
@@ -17,7 +17,7 @@ defmodule ObanEvents do
 
   ## Usage
 
-  Define your event bus in one module:
+  Define your events in one module:
 
       defmodule MyApp.Events do
         use ObanEvents,
@@ -45,7 +45,7 @@ defmodule ObanEvents do
         end
       end)
 
-  ## Event Flow
+  ## Event flow
 
   1. `emit/2` is called with an event name and data
   2. Registry looks up all handlers for that event
@@ -54,7 +54,7 @@ defmodule ObanEvents do
   5. `DispatchWorker` processes each job asynchronously
   6. Each handler's `handle_event/2` callback is invoked
 
-  ## Configuration Options
+  ## Configuration options
 
   - `:oban` - Oban instance and configuration. Can be:
     - Just a module: `oban: MyApp.Oban` (uses all defaults)
@@ -77,7 +77,7 @@ defmodule ObanEvents do
   - `all_events/0` - List all registered events
   - `registered?/1` - Check if an event exists
 
-  ## Handler Implementation
+  ## Handler implementation
 
   Create handlers by implementing the `ObanEvents.Handler` behaviour:
 
@@ -162,7 +162,7 @@ defmodule ObanEvents do
       Creates Oban jobs for all registered handlers of the given event.
       Should be called within a transaction to ensure atomicity.
 
-      ## Return Values
+      ## Return values
 
       - `{:ok, jobs}` - Successfully created Oban jobs (list of `Oban.Job` structs)
 

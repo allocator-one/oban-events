@@ -1,17 +1,17 @@
 defmodule ObanEvents.Registry do
   @moduledoc """
-  Behaviour and macro for defining event bus registries.
+  Behaviour and macro for defining event registries.
 
   This module provides a macro that generates a registry mapping event names to handler modules.
   Each event can have multiple handlers, which are executed independently.
 
   See the [README](README.md) for architectural guidance and best practices.
 
-  ## Defining a Registry
+  ## Defining events
 
-  To create a registry, use the macro and define your events:
+  To create an events module, use the macro and define your events:
 
-      defmodule MyApp.EventBus do
+      defmodule MyApp.Events do
         use ObanEvents
 
         @events %{
@@ -25,9 +25,9 @@ defmodule ObanEvents.Registry do
         }
       end
 
-  ## Adding New Events
+  ## Adding new events
 
-  1. Add the event to `@events` in your registry module
+  1. Add the event to `@events` in your events module
   2. Create the handler module(s) implementing `ObanEvents.Handler`
   3. The system will automatically route events to handlers
   """
@@ -138,10 +138,10 @@ defmodule ObanEvents.Registry do
 
       ## Examples
 
-          iex> MyEventBus.get_handlers!(:user_created)
+          iex> MyApp.Events.get_handlers!(:user_created)
           [MyApp.EmailHandler, MyApp.AnalyticsHandler]
 
-          iex> MyEventBus.get_handlers!(:unknown_event)
+          iex> MyApp.Events.get_handlers!(:unknown_event)
           ** (ArgumentError) Unknown event: :unknown_event. Known events: [:user_created, ...]
       """
       @impl true
@@ -168,7 +168,7 @@ defmodule ObanEvents.Registry do
 
       ## Examples
 
-          iex> MyEventBus.all_events()
+          iex> MyApp.Events.all_events()
           [:user_created, :user_updated, ...]
       """
       @impl true
@@ -184,10 +184,10 @@ defmodule ObanEvents.Registry do
 
       ## Examples
 
-          iex> MyEventBus.registered?(:user_created)
+          iex> MyApp.Events.registered?(:user_created)
           true
 
-          iex> MyEventBus.registered?(:unknown_event)
+          iex> MyApp.Events.registered?(:unknown_event)
           false
       """
       @impl true
