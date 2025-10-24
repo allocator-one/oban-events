@@ -9,7 +9,7 @@ defmodule ObanEventsTest do
     use ObanEvents.Handler
 
     @impl true
-    def handle_event(_event, _data), do: :ok
+    def handle_event(_event, %Event{}), do: :ok
   end
 
   # Test event bus with handlers registered (uses defaults)

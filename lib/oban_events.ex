@@ -148,29 +148,35 @@ defmodule ObanEvents do
 
       - `event_name`: Atom representing the event (e.g., `:user_created`)
       - `data`: Map of event-specific data (atom or string keys both work, must be JSON-serializable)
+      - `opts`: Keyword list of optional metadata (see below)
+
+      ## Options
+
+      - `:causation_id` - Event ID that caused this emit (for event chains)
+      - `:correlation_id` - Group related events from the same business operation
 
       ## Examples
 
+          # Basic emit
+          #{inspect(__MODULE__)}.emit(:user_created, %{user_id: 123})
+
           # Within a transaction (recommended)
-          MyApp.Repo.transaction(fn ->
+          MyApp.Repo.transact(fn ->
             with {:ok, user} <- MyApp.Repo.insert(changeset),
                  {:ok, _jobs} <- #{inspect(__MODULE__)}.emit(:user_created, %{id: user.id}) do
               {:ok, user}
             end
           end)
 
-          # With atom keys (recommended for readability)
-          #{inspect(__MODULE__)}.emit(:user_updated, %{
-            user_id: user.id,
-            old_email: "old@example.com",
-            new_email: "new@example.com"
-          })
+          # Emit child event with causation
+          def handle_event(:user_created, %Event{event_id: parent_id, data: data}) do
+            #{inspect(__MODULE__)}.emit(:send_welcome_email, data, causation_id: parent_id)
+          end
 
-          # With string keys (also valid)
-          #{inspect(__MODULE__)}.emit(:user_updated, %{
-            "user_id" => user.id,
-            "new_email" => "new@example.com"
-          })
+          # Group related events with correlation_id
+          correlation_id = UUIDv7.generate()
+          #{inspect(__MODULE__)}.emit(:order_placed, %{order_id: 1}, correlation_id: correlation_id)
+          #{inspect(__MODULE__)}.emit(:payment_processed, %{order_id: 1}, correlation_id: correlation_id)
 
       Note: Handlers always receive data with string keys, regardless of how you emit.
 
@@ -178,9 +184,14 @@ defmodule ObanEvents do
 
       Raises `ArgumentError` if the event is not registered.
       """
-      @spec emit(atom(), map()) :: {:ok, [Oban.Job.t()]}
-      def emit(event_name, data) when is_atom(event_name) and is_map(data) do
+      @spec emit(atom(), map(), keyword()) :: {:ok, [Oban.Job.t()]}
+      def emit(event_name, data, opts \\ []) when is_atom(event_name) and is_map(data) do
         handlers = get_handlers!(event_name)
+
+        # Generate event_id once - shared by all handler jobs for this emit
+        event_id = UUIDv7.generate()
+        causation_id = Keyword.get(opts, :causation_id)
+        correlation_id = Keyword.get(opts, :correlation_id)
 
         jobs =
           Enum.map(handlers, fn handler_module ->
@@ -188,7 +199,11 @@ defmodule ObanEvents do
               %{
                 event: Atom.to_string(event_name),
                 handler: Atom.to_string(handler_module),
-                data: data
+                data: data,
+                event_id: event_id,
+                idempotency_key: UUIDv7.generate(),
+                causation_id: causation_id,
+                correlation_id: correlation_id
               },
               queue: @oban_queue,
               max_attempts: @oban_max_attempts,

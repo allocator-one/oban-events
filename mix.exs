@@ -4,7 +4,7 @@ defmodule ObanEvents.MixProject do
   def project do
     [
       app: :oban_events,
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -33,6 +33,7 @@ defmodule ObanEvents.MixProject do
   defp deps do
     [
       {:oban, "~> 2.0"},
+      {:uuidv7, "~> 0.2"},
       # Postgrex needed for Oban in test environment
       {:postgrex, ">= 0.0.0", only: :test},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
