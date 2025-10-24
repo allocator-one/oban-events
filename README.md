@@ -1,6 +1,6 @@
 # ObanEvents
 
-A lightweight, persistent event bus for Elixir applications built on top of [Oban](https://github.com/sorentwo/oban).
+A lightweight, persistent event handling library for Elixir applications built on top of [Oban](https://github.com/sorentwo/oban).
 
 ## Features
 
@@ -28,20 +28,20 @@ end
 
 ## Quick Start
 
-### 1. Define Your Event Bus
+### 1. Define Your Events
 
 Create a module that uses `ObanEvents` and define your events and handlers:
 
 ```elixir
 defmodule MyApp.Events do
   use ObanEvents,
-    oban: MyApp.Oban,
-    queue: :myapp_events,
-    max_attempts: 3,
-    priority: 2
+    oban: MyApp.Oban
 
-  @event_handlers %{
-    user_created: [MyApp.EmailHandler, MyApp.AnalyticsHandler],
+  @events %{
+    user_created: [
+      {MyApp.EmailHandler, oban: [priority: 0, max_attempts: 5, tags: ["critical"]]},
+      MyApp.AnalyticsHandler
+    ],
     user_updated: [MyApp.CacheHandler],
     order_placed: [MyApp.NotificationHandler]
   }
@@ -201,30 +201,103 @@ Events.emit(:invoice_generated, data, correlation_id: correlation_id)
 
 ## Configuration Options
 
-When using `ObanEvents`, you can configure:
+### Global Configuration
 
-- `:oban` - Oban instance module (default: `Oban`)
-- `:queue` - Oban queue name (default: `:events`)
-- `:max_attempts` - Maximum retry attempts (default: `3`)
-- `:priority` - Job priority, 0-3, lower is higher priority (default: `2`)
+Configure the Oban instance and default job options:
 
 ```elixir
 defmodule MyApp.Events do
-  use ObanEvents,
-    oban: MyApp.Oban,           # Use custom Oban instance
-    queue: :my_events,          # Custom queue name
-    max_attempts: 5,            # Retry up to 5 times
-    priority: 1                 # Higher priority than default
+  # Simple: just specify the Oban instance (uses all defaults)
+  use ObanEvents, oban: MyApp.Oban
 
-  @event_handlers %{
+  # Or: specify Oban instance + custom options
+  use ObanEvents,
+    oban: {MyApp.Oban, queue: :my_events, max_attempts: 5, priority: 1, tags: ["myapp"]}
+
+  @events %{
     # ...
   }
 end
 ```
 
+**Default Oban options:**
+- `queue`: `:oban_events`
+- `max_attempts`: `3`
+- `priority`: `2` (0-3, lower is higher priority)
+- `tags`: `[]`
+
+### Per-Handler Configuration
+
+Override global options for specific handlers using tuple syntax:
+
+```elixir
+@events %{
+  user_created: [
+    # Critical handler with higher priority and more retries
+    {MyApp.EmailHandler, oban: [priority: 0, max_attempts: 10, tags: ["critical", "email"]]},
+
+    # Low-priority handler in different queue
+    {MyApp.AnalyticsHandler, oban: [queue: :analytics, priority: 3]},
+
+    # Handler using all global defaults
+    MyApp.NotificationHandler
+  ]
+}
+```
+
+**Supported per-handler options:**
+
+Oban job options (under `:oban` key):
+- `queue` - Override queue (atom)
+- `max_attempts` - Override retry count (integer)
+- `priority` - Override priority (0-3, lower is higher)
+- `tags` - Override tags (list of strings)
+
+Conditional execution (`:if` key):
+- Function: `fn event -> boolean() end` - receives full Event struct
+- MFA tuple: `{Module, :function, [args]}` - event is appended as last argument
+
+### Conditional Handlers
+
+Use the `:if` option to conditionally schedule handlers based on runtime conditions:
+
+```elixir
+@events %{
+  user_created: [
+    # Feature flag check (recommended for @events - can be serialized)
+    {MyApp.NewEmailHandler, if: {FunWithFlags, :enabled?, [:new_email_template]}},
+
+    # Custom validation function
+    {MyApp.PremiumHandler, if: {MyApp.Features, :is_premium?, []}},
+
+    # Always scheduled (no :if)
+    MyApp.StandardHandler
+  ]
+}
+
+# Helper module example
+defmodule MyApp.Features do
+  def is_premium?(event) do
+    event.data["plan"] != "free"
+  end
+end
+```
+
+**The `:if` condition:**
+- Receives the full `Event` struct (with `data`, `event_id`, `causation_id`, `correlation_id`)
+- `idempotency_key` is `nil` in the `:if` check (generated per-job after condition passes)
+- Runs synchronously during `emit/3`, before Oban jobs are created
+- If returns `false`, handler is skipped (no job created)
+- Keep checks fast - they block the emit caller
+
+**MFA vs Function:**
+- MFA tuples (`{Module, :function, []}`) can be used in `@events` module attributes
+- Anonymous functions work at runtime but cannot be stored in module attributes
+- For feature flags, use MFA tuples with libraries like `fun_with_flags`
+
 ## API
 
-Your event bus module provides these functions:
+Your events module provides these functions:
 
 ### `emit/2`
 
@@ -501,7 +574,7 @@ end
 defmodule MyApp.Events do
   use ObanEvents
 
-  @event_handlers %{
+  @events %{
     user_created: [
       MyApp.Notifications.EmailHandler  # New jobs use new name
     ]
