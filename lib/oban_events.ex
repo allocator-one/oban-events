@@ -152,6 +152,7 @@ defmodule ObanEvents do
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defmacro __before_compile__(_env) do
     quote do
       alias ObanEvents.{DispatchWorker, Event}
@@ -207,6 +208,7 @@ defmodule ObanEvents do
       Raises `ArgumentError` if the event is not registered.
       """
       @spec emit(atom(), map(), keyword()) :: {:ok, [Oban.Job.t()]}
+      # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
       def emit(event_name, data, opts \\ []) when is_atom(event_name) and is_map(data) do
         handlers = get_handlers!(event_name)
 

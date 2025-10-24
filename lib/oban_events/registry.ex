@@ -59,6 +59,7 @@ defmodule ObanEvents.Registry do
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defmacro __before_compile__(env) do
     # Compile-time validation of @events
     events = Module.get_attribute(env.module, :events)
