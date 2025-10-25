@@ -806,10 +806,6 @@ See the [test suite](test/) for complete examples of:
 - Transaction behavior
 - Testing patterns
 
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
 ## Credits
 
 Built with [Oban](https://github.com/sorentwo/oban) by Parker Selbert.
