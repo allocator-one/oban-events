@@ -223,7 +223,7 @@ end
 **Default Oban options:**
 - `queue`: `:oban_events`
 - `max_attempts`: `3`
-- `priority`: `2` (0-3, lower is higher priority)
+- `priority`: `2` (0-9, lower is higher priority)
 - `tags`: `[]`
 
 ### Per-handler configuration
@@ -239,61 +239,26 @@ Override global options for specific handlers using tuple syntax:
     # Low-priority handler in different queue
     {MyApp.AnalyticsHandler, oban: [queue: :analytics, priority: 3]},
 
+    # Delayed handler - send reminder email after 24 hours
+    {MyApp.ReminderHandler, oban: [schedule_in: {24, :hours}]},
+
     # Handler using all global defaults
     MyApp.NotificationHandler
   ]
 }
 ```
 
-**Supported per-handler options:**
+**Per-handler options:**
 
-Oban job options (under `:oban` key):
+Any [Oban.Job.new/2](https://hexdocs.pm/oban/Oban.Job.html) option can be passed under the `:oban` key. Common options:
 - `queue` - Override queue (atom)
 - `max_attempts` - Override retry count (integer)
-- `priority` - Override priority (0-3, lower is higher)
+- `priority` - Override priority (0-9, lower is higher)
 - `tags` - Override tags (list of strings)
-
-Conditional execution (`:if` key):
-- Function: `fn event -> boolean() end` - receives full Event struct
-- MFA tuple: `{Module, :function, [args]}` - event is appended as last argument
-
-### Conditional handlers
-
-Use the `:if` option to conditionally schedule handlers based on runtime conditions:
-
-```elixir
-@events %{
-  user_created: [
-    # Feature flag check (recommended for @events - can be serialized)
-    {MyApp.NewEmailHandler, if: {FunWithFlags, :enabled?, [:new_email_template]}},
-
-    # Custom validation function
-    {MyApp.PremiumHandler, if: {MyApp.Features, :is_premium?, []}},
-
-    # Always scheduled (no :if)
-    MyApp.StandardHandler
-  ]
-}
-
-# Helper module example
-defmodule MyApp.Features do
-  def is_premium?(event) do
-    event.data["plan"] != "free"
-  end
-end
-```
-
-**The `:if` condition:**
-- Receives the full `Event` struct (with `data`, `event_id`, `causation_id`, `correlation_id`)
-- `idempotency_key` is `nil` in the `:if` check (generated per-job after condition passes)
-- Runs synchronously during `emit/3`, before Oban jobs are created
-- If returns `false`, handler is skipped (no job created)
-- Keep checks fast - they block the emit caller
-
-**MFA vs Function:**
-- MFA tuples (`{Module, :function, []}`) can be used in `@events` module attributes
-- Anonymous functions work at runtime but cannot be stored in module attributes
-- For feature flags, use MFA tuples with libraries like `fun_with_flags`
+- `scheduled_at` - Schedule for future execution (DateTime)
+- `schedule_in` - Delay execution (integer seconds or `{n, :unit}` tuple)
+- `meta` - Additional job metadata (map)
+- `unique` - Uniqueness constraints (keyword list)
 
 ## API
 
@@ -540,6 +505,56 @@ def handle_event(:send_notification, %Event{data: data}) do
 end
 ```
 
+### 6. Handle permanently failed jobs
+
+When a handler exhausts all retry attempts, you may want to take action like alerting, logging to a dead letter queue, or notifying administrators. Override `handle_exhausted/4` in your events module:
+
+```elixir
+defmodule MyApp.Events do
+  use ObanEvents, oban: MyApp.Oban
+
+  @events %{
+    user_created: [MyApp.EmailHandler]
+  }
+
+  # Called when a handler fails after max_attempts
+  def handle_exhausted(event_name, handler_module, event, error) do
+    # Log to your error tracking service
+    Sentry.capture_message("Event handler permanently failed",
+      extra: %{
+        event: event_name,
+        handler: handler_module,
+        event_id: event.event_id,
+        error: error
+      }
+    )
+
+    # Store in dead letter queue for manual review
+    DeadLetterQueue.insert(%{
+      event_name: event_name,
+      handler: handler_module,
+      event_data: event.data,
+      event_id: event.event_id,
+      error: inspect(error),
+      failed_at: DateTime.utc_now()
+    })
+
+    :ok
+  end
+end
+```
+
+**Default behavior:**
+
+If you don't override `handle_exhausted/4`, the worker will log a warning with the event details. This ensures failures are always logged even without custom handling.
+
+**The callback receives:**
+
+- `event_name` - The event that failed (atom)
+- `handler_module` - The handler that failed (module)
+- `event` - The full Event struct with all metadata
+- `error` - The error reason from the final attempt
+
 ## Handler management
 
 ### Renaming or removing handler modules
@@ -636,8 +651,8 @@ test "emits user_created event" do
   assert_enqueued(
     worker: ObanEvents.DispatchWorker,
     args: %{
-      "event" => "user_created",
-      "handler" => "Elixir.MyApp.EmailHandler",
+      "event_name" => "user_created",
+      "handler_module" => "Elixir.MyApp.EmailHandler",
       "data" => %{"user_id" => user.id}
     }
   )

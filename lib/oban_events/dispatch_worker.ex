@@ -5,14 +5,15 @@ defmodule ObanEvents.DispatchWorker do
   This worker:
   1. Receives an event name, handler module, data, and idempotency key from job args
   2. Converts strings back to atoms safely
-  3. Creates an EventData struct with the data and idempotency key
+  3. Creates an Event struct with the data and idempotency key
   4. Calls the handler's `handle_event/2` callback
   5. Logs success/failure for observability
 
   ## Job arguments
 
-  - `event`: String representation of the event name
-  - `handler`: String representation of the handler module
+  - `event_name`: String representation of the event name
+  - `handler_module`: String representation of the handler module
+  - `events_module`: String representation of the events module (for exhausted callback)
   - `data`: Map of event-specific data
   - `event_id`: UUIDv7 string identifying this emit (shared by all handlers)
   - `idempotency_key`: UUIDv7 string for deduplication (unique per job)
@@ -41,17 +42,19 @@ defmodule ObanEvents.DispatchWorker do
   def perform(%Oban.Job{
         args:
           %{
-            "event" => event_name_string,
-            "handler" => handler_module_string,
+            "event_name" => event_name_string,
+            "handler_module" => handler_module_string,
             "data" => data,
             "event_id" => event_id,
             "idempotency_key" => idempotency_key
-          } = args
-      }) do
+          } = args,
+        attempt: attempt,
+        max_attempts: max_attempts
+      } = job) do
     # Safely convert strings back to atoms
     # These atoms should already exist since they were created during emit
-    event = String.to_existing_atom(event_name_string)
-    handler = String.to_existing_atom(handler_module_string)
+    event_name = String.to_existing_atom(event_name_string)
+    handler_module = String.to_existing_atom(handler_module_string)
 
     # Create Event struct with all metadata
     event_struct = %Event{
@@ -62,31 +65,36 @@ defmodule ObanEvents.DispatchWorker do
       correlation_id: Map.get(args, "correlation_id")
     }
 
-    Logger.info("Processing event: #{event} with handler: #{inspect(handler)}")
+    Logger.info("Processing event: #{event_name} with handler: #{inspect(handler_module)}")
 
-    case handler.handle_event(event, event_struct) do
+    case handler_module.handle_event(event_name, event_struct) do
       :ok ->
-        Logger.info("Event processed successfully: #{event} by #{inspect(handler)}")
+        Logger.info("Event processed successfully: #{event_name} by #{inspect(handler_module)}")
         :ok
 
       {:ok, result} ->
         Logger.info(
-          "Event processed successfully: #{event} by #{inspect(handler)}, result: #{inspect(result)}"
+          "Event processed successfully: #{event_name} by #{inspect(handler_module)}, result: #{inspect(result)}"
         )
 
         :ok
 
       {:error, reason} = error ->
         Logger.error(
-          "Event handler failed: #{event} by #{inspect(handler)}, error: #{inspect(reason)}"
+          "Event handler failed: #{event_name} by #{inspect(handler_module)}, error: #{inspect(reason)}"
         )
 
-        # Return error to trigger Oban retry
+        # Check if this is the final attempt
+        if attempt >= max_attempts do
+          handle_exhausted(args, event_name, handler_module, event_struct, reason, job)
+        end
+
+        # Return error to trigger Oban retry (or mark as discarded if final attempt)
         error
 
       other ->
         Logger.warning(
-          "Event handler returned unexpected value: #{inspect(other)} for #{event} by #{inspect(handler)}"
+          "Event handler returned unexpected value: #{inspect(other)} for #{event_name} by #{inspect(handler_module)}"
         )
 
         # Treat unexpected returns as success to avoid retry loops
@@ -100,6 +108,36 @@ defmodule ObanEvents.DispatchWorker do
       "DispatchWorker received invalid job arguments: job_id=#{job.id}, args=#{inspect(args)}"
     )
 
-    {:error, "Invalid job arguments: missing event, handler, or data"}
+    {:error, "Invalid job arguments: missing event_name, handler_module, or data"}
+  end
+
+  # Called when a handler exhausts all retry attempts
+  defp handle_exhausted(args, event_name, handler_module, event_struct, error, job) do
+    # Always log as a safety net
+    Logger.warning("""
+    Event handler exhausted all retry attempts.
+
+    Event: #{inspect(event_name)}
+    Handler: #{inspect(handler_module)}
+    Event ID: #{event_struct.event_id}
+    Job ID: #{job.id}
+    Error: #{inspect(error)}
+    """)
+
+    # Call custom handler from events module
+    module_string = args["events_module"]
+
+    try do
+      events_module = String.to_existing_atom(module_string)
+      events_module.handle_exhausted(event_name, handler_module, event_struct, error)
+    rescue
+      e ->
+        Logger.error(
+          "Failed to call custom handle_exhausted/4: #{inspect(e)}. " <>
+            "Ensure #{module_string}.handle_exhausted/4 is defined correctly."
+        )
+
+        :ok
+    end
   end
 end

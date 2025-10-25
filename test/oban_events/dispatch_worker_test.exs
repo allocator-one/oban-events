@@ -41,8 +41,8 @@ defmodule ObanEvents.DispatchWorkerTest do
   describe "perform/1" do
     test "successfully processes event and calls handler" do
       job_args = %{
-        "event" => "test_event",
-        "handler" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
+        "event_name" => "test_event",
+        "handler_module" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
         "data" => %{"action" => "success"},
         "event_id" => UUIDv7.generate(),
         "idempotency_key" => UUIDv7.generate()
@@ -55,8 +55,8 @@ defmodule ObanEvents.DispatchWorkerTest do
 
     test "returns error when handler returns error" do
       job_args = %{
-        "event" => "test_event",
-        "handler" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
+        "event_name" => "test_event",
+        "handler_module" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
         "data" => %{"action" => "error"},
         "event_id" => UUIDv7.generate(),
         "idempotency_key" => UUIDv7.generate()
@@ -73,8 +73,8 @@ defmodule ObanEvents.DispatchWorkerTest do
 
     test "handles handler exceptions gracefully" do
       job_args = %{
-        "event" => "test_event",
-        "handler" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
+        "event_name" => "test_event",
+        "handler_module" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
         "data" => %{"action" => "raise"},
         "event_id" => UUIDv7.generate(),
         "idempotency_key" => UUIDv7.generate()
@@ -88,7 +88,7 @@ defmodule ObanEvents.DispatchWorkerTest do
     test "returns error for invalid job arguments" do
       # Missing required fields
       job_args = %{
-        "handler" => "SomeHandler",
+        "handler_module" => "SomeHandler",
         "data" => %{}
       }
 
@@ -102,8 +102,8 @@ defmodule ObanEvents.DispatchWorkerTest do
 
     test "returns error for invalid handler module" do
       job_args = %{
-        "event" => "test_event",
-        "handler" => "NonExistent.Handler.Module",
+        "event_name" => "test_event",
+        "handler_module" => "NonExistent.Handler.Module",
         "data" => %{},
         "event_id" => UUIDv7.generate(),
         "idempotency_key" => UUIDv7.generate()
@@ -116,8 +116,8 @@ defmodule ObanEvents.DispatchWorkerTest do
 
     test "handles {:ok, result} return value" do
       job_args = %{
-        "event" => "test_event",
-        "handler" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
+        "event_name" => "test_event",
+        "handler_module" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
         "data" => %{"action" => "success_with_result"},
         "event_id" => UUIDv7.generate(),
         "idempotency_key" => UUIDv7.generate()
@@ -129,8 +129,8 @@ defmodule ObanEvents.DispatchWorkerTest do
 
     test "handles unexpected return value gracefully" do
       job_args = %{
-        "event" => "test_event",
-        "handler" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
+        "event_name" => "test_event",
+        "handler_module" => "Elixir.ObanEvents.DispatchWorkerTest.TestHandler",
         "data" => %{"action" => "unexpected"},
         "event_id" => UUIDv7.generate(),
         "idempotency_key" => UUIDv7.generate()
@@ -151,8 +151,8 @@ defmodule ObanEvents.DispatchWorkerTest do
       changeset =
         DispatchWorker.new(
           %{
-            "event" => "test",
-            "handler" => "Test",
+            "event_name" => "test",
+            "handler_module" => "Test",
             "data" => %{}
           },
           queue: :custom_queue
@@ -165,8 +165,8 @@ defmodule ObanEvents.DispatchWorkerTest do
       changeset =
         DispatchWorker.new(
           %{
-            "event" => "test",
-            "handler" => "Test",
+            "event_name" => "test",
+            "handler_module" => "Test",
             "data" => %{}
           },
           priority: 0
@@ -179,8 +179,8 @@ defmodule ObanEvents.DispatchWorkerTest do
       changeset =
         DispatchWorker.new(
           %{
-            "event" => "test",
-            "handler" => "Test",
+            "event_name" => "test",
+            "handler_module" => "Test",
             "data" => %{}
           },
           max_attempts: 10
@@ -193,8 +193,8 @@ defmodule ObanEvents.DispatchWorkerTest do
       changeset =
         DispatchWorker.new(
           %{
-            "event" => "test",
-            "handler" => "Test",
+            "event_name" => "test",
+            "handler_module" => "Test",
             "data" => %{}
           },
           queue: :high_priority,
