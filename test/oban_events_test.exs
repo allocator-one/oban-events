@@ -36,7 +36,13 @@ defmodule ObanEventsTest do
   defmodule CustomConfigEvents do
     @moduledoc false
     use ObanEvents,
-      oban: {Oban, queue: :custom_queue, max_attempts: 10, priority: 0, tags: ["custom"], meta: %{"global" => "metadata"}}
+      oban:
+        {Oban,
+         queue: :custom_queue,
+         max_attempts: 10,
+         priority: 0,
+         tags: ["custom"],
+         meta: %{"global" => "metadata"}}
 
     @events %{
       test_event: [ObanEventsTest.TestHandler]
@@ -204,7 +210,6 @@ defmodule ObanEventsTest do
       # In test mode with inline execution, this still creates a scheduled_at
       assert job.scheduled_at != nil
     end
-
   end
 
   describe "handle_exhausted/4" do
@@ -264,7 +269,9 @@ defmodule ObanEventsTest do
       # Capture logs to verify warning is logged
       log =
         capture_log(fn ->
-          assert {:ok, [job]} = EventsWithDefaultExhausted.emit(:failing_event, %{"test" => "data"})
+          assert {:ok, [job]} =
+                   EventsWithDefaultExhausted.emit(:failing_event, %{"test" => "data"})
+
           assert job.state == "discarded"
         end)
 

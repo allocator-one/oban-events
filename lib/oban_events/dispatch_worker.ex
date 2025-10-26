@@ -39,18 +39,20 @@ defmodule ObanEvents.DispatchWorker do
   alias ObanEvents.Event
 
   @impl Oban.Worker
-  def perform(%Oban.Job{
-        args:
-          %{
-            "event_name" => event_name_string,
-            "handler_module" => handler_module_string,
-            "data" => data,
-            "event_id" => event_id,
-            "idempotency_key" => idempotency_key
-          } = args,
-        attempt: attempt,
-        max_attempts: max_attempts
-      } = job) do
+  def perform(
+        %Oban.Job{
+          args:
+            %{
+              "event_name" => event_name_string,
+              "handler_module" => handler_module_string,
+              "data" => data,
+              "event_id" => event_id,
+              "idempotency_key" => idempotency_key
+            } = args,
+          attempt: attempt,
+          max_attempts: max_attempts
+        } = job
+      ) do
     # Safely convert strings back to atoms
     # These atoms should already exist since they were created during emit
     event_name = String.to_existing_atom(event_name_string)
