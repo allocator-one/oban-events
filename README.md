@@ -20,8 +20,7 @@ Add `oban_events` to your list of dependencies in `mix.exs`:
 def deps do
   [
     {:oban_events, "~> 1.0"},
-    {:oban, "~> 2.0"},
-    {:postgrex, ">= 0.0.0"}  # Required by Oban
+    {:oban, "~> 2.0"}
   ]
 end
 ```
@@ -30,12 +29,12 @@ end
 
 ### 1. Define Your Events
 
-Create a module that uses `ObanEvents` and define your events and handlers:
+Create a module that uses `ObanEvents`, pass your Oban instance and optional global job config (defaults: `queue: :oban_events`, `max_attempts: 3`, `priority: 2`), then define your events and handlers:
 
 ```elixir
 defmodule MyApp.Events do
   use ObanEvents,
-    oban: MyApp.Oban
+    oban: {MyApp.Oban, queue: :myapp_events, max_attempts: 3}
 
   @events %{
     user_created: [
@@ -110,7 +109,7 @@ end
 flowchart TD
     A[Business Logic] -->|1. emit event + data| B[Events.emit]
     B -->|2. lookup handlers| C[Create Oban jobs]
-    C -->|3. transaction commits| D[Oban processes jobs]
+    C -->|3. persist dispatch jobs| D[Oban processes jobs]
     D -->|4. dispatch| E[EmailHandler]
     D -->|4. dispatch| F[AnalyticsHandler]
 ```
