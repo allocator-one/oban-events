@@ -726,12 +726,18 @@ end
 
 ### Logging
 
-ObanEvents logs all event processing:
+ObanEvents logs successful event processing at debug level and failures at error level:
 
 ```
-[info] Processing event: user_created with handler: MyApp.EmailHandler
-[info] Event processed successfully: user_created by MyApp.EmailHandler
+[debug] Processing event: user_created with handler: MyApp.EmailHandler
+[debug] Event processed successfully: user_created by MyApp.EmailHandler
 [error] Event handler failed: user_created by MyApp.EmailHandler, error: :network_timeout
+```
+
+To enable debug logs at runtime use:
+
+```elixir
+iex> Logger.configure(level: :debug)
 ```
 
 ## Troubleshooting

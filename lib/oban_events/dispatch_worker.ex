@@ -67,15 +67,15 @@ defmodule ObanEvents.DispatchWorker do
       correlation_id: Map.get(args, "correlation_id")
     }
 
-    Logger.info("Processing event: #{event_name} with handler: #{inspect(handler_module)}")
+    Logger.debug("Processing event: #{event_name} with handler: #{inspect(handler_module)}")
 
     case handler_module.handle_event(event_name, event_struct) do
       :ok ->
-        Logger.info("Event processed successfully: #{event_name} by #{inspect(handler_module)}")
+        Logger.debug("Event processed successfully: #{event_name} by #{inspect(handler_module)}")
         :ok
 
       {:ok, result} ->
-        Logger.info(
+        Logger.debug(
           "Event processed successfully: #{event_name} by #{inspect(handler_module)}, result: #{inspect(result)}"
         )
 
