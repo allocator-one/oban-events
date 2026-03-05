@@ -811,6 +811,10 @@ See the [test suite](test/) for complete examples of:
 - Transaction behavior
 - Testing patterns
 
+## Disclaimer
+
+ObanEvents is an independent, community-built library and is not an official Oban project.
+
 ## Credits
 
 Built with [Oban](https://github.com/sorentwo/oban) by Parker Selbert.
