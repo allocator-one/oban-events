@@ -1,7 +1,7 @@
 defmodule ObanEvents.MixProject do
   use Mix.Project
 
-  @version "1.0.1"
+  @version "1.0.2"
   @source_url "https://github.com/allocator-one/oban-events"
 
   def project do
@@ -44,7 +44,7 @@ defmodule ObanEvents.MixProject do
   defp deps do
     [
       {:oban, "~> 2.0"},
-      {:uuidv7, "~> 0.2"},
+      {:uuidv7, "~> 1.0"},
       # Postgrex needed for Oban in test environment
       {:postgrex, ">= 0.0.0", only: :test},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
