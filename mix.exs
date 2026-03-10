@@ -44,7 +44,7 @@ defmodule ObanEvents.MixProject do
   defp deps do
     [
       {:oban, "~> 2.0"},
-      {:uuidv7, "~> 1.0"},
+      {:uuidv7, "~> 0.2 or ~> 1.0"},
       # Postgrex needed for Oban in test environment
       {:postgrex, ">= 0.0.0", only: :test},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
@@ -63,7 +63,8 @@ defmodule ObanEvents.MixProject do
       maintainers: ["Goran Pedić"],
       licenses: ["MIT"],
       links: %{
-        "GitHub" => @source_url
+        "GitHub" => @source_url,
+        "Infra One" => "https://infra.one/"
       },
       files: ~w(lib mix.exs README.md LICENSE)
     ]

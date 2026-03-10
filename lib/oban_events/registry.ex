@@ -145,6 +145,7 @@ defmodule ObanEvents.Registry do
           iex> MyApp.Events.get_handlers!(:unknown_event)
           ** (ArgumentError) Unknown event: :unknown_event. Known events: [:user_created, ...]
       """
+      @spec get_handlers!(atom()) :: [module()]
       @impl true
       def get_handlers!(event_name) when is_atom(event_name) do
         case Map.fetch(@events, event_name) do
@@ -172,6 +173,7 @@ defmodule ObanEvents.Registry do
           iex> MyApp.Events.all_events()
           [:user_created, :user_updated, ...]
       """
+      @spec all_events() :: [atom()]
       @impl true
       def all_events do
         Map.keys(@events)
@@ -191,6 +193,7 @@ defmodule ObanEvents.Registry do
           iex> MyApp.Events.registered?(:unknown_event)
           false
       """
+      @spec registered?(atom()) :: boolean()
       @impl true
       def registered?(event_name) when is_atom(event_name) do
         Map.has_key?(@events, event_name)
