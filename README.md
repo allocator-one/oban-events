@@ -263,15 +263,17 @@ Any [Oban.Job.new/2](https://hexdocs.pm/oban/Oban.Job.html) option can be passed
 
 Your events module provides these functions:
 
-### `emit/2`
+### `emit/2` and `emit/3`
 
-Emit an event to all registered handlers.
+Emit an event to all registered handlers, with optional metadata in the third argument.
 
 ```elixir
 @spec emit(atom(), map()) :: {:ok, [Oban.Job.t()]}
+@spec emit(atom(), map(), keyword()) :: {:ok, [Oban.Job.t()]}
 
 # Raises ArgumentError if event is not registered
 MyApp.Events.emit(:user_created, %{user_id: 123, email: "user@example.com"})
+MyApp.Events.emit(:user_created, %{user_id: 123}, correlation_id: UUIDv7.generate())
 ```
 
 ### `get_handlers!/1`
@@ -805,7 +807,7 @@ iex> Oban.retry_job(job)
 
 ## Examples
 
-See the [test suite](test/) for complete examples of:
+See the repository test suite for complete examples of:
 - Event emission
 - Handler implementation
 - Transaction behavior

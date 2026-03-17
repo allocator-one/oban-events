@@ -1,6 +1,3 @@
-# Compile test support modules
-Code.require_file("support/repo.ex", __DIR__)
-
 # Start Oban for testing with inline mode
 # This allows tests to run and execute jobs immediately
 {:ok, _} = Application.ensure_all_started(:postgrex)

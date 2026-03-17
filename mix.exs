@@ -1,7 +1,7 @@
 defmodule ObanEvents.MixProject do
   use Mix.Project
 
-  @version "1.0.2"
+  @version "1.0.3"
   @source_url "https://github.com/allocator-one/oban-events"
 
   def project do
@@ -9,6 +9,7 @@ defmodule ObanEvents.MixProject do
       app: :oban_events,
       version: @version,
       elixir: "~> 1.18",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
@@ -32,6 +33,9 @@ defmodule ObanEvents.MixProject do
       extra_applications: [:logger]
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do

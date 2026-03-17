@@ -28,7 +28,7 @@ defmodule ObanEvents.DispatchWorker do
 
   ## Observability
 
-  All event processing is logged at INFO level for successful processing
+  All event processing is logged at DEBUG level for successful processing
   and ERROR level for failures. Check Oban Web UI for job history.
   """
 
